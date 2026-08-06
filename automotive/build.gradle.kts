@@ -38,17 +38,17 @@ android {
 
         create("legacy") {
             dimension = "aaos"
-            applicationId = "com.ixam97.carStatsViewer"
+            applicationId = "dev.kroot.carStatsViewer"
         }
 
         create("carapp") {
             dimension = "aaos"
-            applicationId = "de.ixam97.carStatsViewer.carApp"
+            applicationId = "dev.kroot.carStatsViewer.carApp"
         }
 
         create("dev") {
             dimension = "version"
-            applicationId = "com.ixam97.carStatsViewer_dev"
+            applicationId = "dev.kroot.carStatsViewer_dev"
             resValue("string","useFirebase", firebase.toString())
         }
     }
