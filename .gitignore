@@ -42,3 +42,4 @@ credentials.xml
 /automotive/stable/
 /automotive/debug/
 /.kotlin/
+google-services.json

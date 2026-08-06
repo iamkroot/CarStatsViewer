@@ -1,5 +1,18 @@
-val firebase: Boolean = providers.gradleProperty("useFirebase").get().toBoolean()
-val mapbox: Boolean = providers.gradleProperty("useMapbox").get().toBoolean()
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootDir.resolve("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val firebase: Boolean = providers.gradleProperty("useFirebase")
+    .orElse(providers.provider { localProperties.getProperty("useFirebase", "false") })
+    .get().toBoolean()
+val mapbox: Boolean = providers.gradleProperty("useMapbox")
+    .orElse(providers.provider { localProperties.getProperty("useMapbox", "false") })
+    .get().toBoolean()
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -61,6 +74,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
