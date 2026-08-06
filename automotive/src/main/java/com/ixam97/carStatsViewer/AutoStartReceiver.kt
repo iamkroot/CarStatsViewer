@@ -42,7 +42,7 @@ class AutoStartReceiver: BroadcastReceiver() {
             startForegroundService(CarStatsViewer.appContext, Intent(CarStatsViewer.appContext, DataCollector::class.java))
             return true
         } catch (e: Exception) {
-            InAppLogger.e("[ASR] Failed to directly start foreground service! Probably missing background location permission or not supported by OS version!")
+            InAppLogger.e("[ASR] Failed to directly start foreground service! Probably missing vehicle permissions, background location permission, or not supported by OS version!")
             InAppLogger.e(e.stackTraceToString())
             return false
         }
@@ -226,7 +226,7 @@ class AutoStartReceiver: BroadcastReceiver() {
              */
         }
 
-        val notificationBuilder = if (context.hasVehiclePermissions()) startupNotificationBuilder
+        val notificationBuilder = if (context.hasVehiclePermissions() && context.hasBackgroundLocationPermission()) startupNotificationBuilder
         else missingPermissionsNotificationBuilder
 
 
