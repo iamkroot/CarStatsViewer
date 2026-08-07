@@ -186,19 +186,44 @@ class DataProcessor {
             return
         }
 
+        if (carProperty == CarProperties.EV_BATTERY_LEVEL) {
+            if (carPropertiesData.BatteryLevel.value == null) {
+                InAppLogger.logWithFirebase("[DataProcessor] EV_BATTERY_LEVEL event received but BatteryLevel value is NULL", android.util.Log.WARN)
+            } else {
+                val raw = carPropertiesData.BatteryLevel.value as? Float
+                InAppLogger.logWithFirebase("[DataProcessor] EV_BATTERY_LEVEL raw value received: $raw", android.util.Log.INFO)
+            }
+        }
+
         try {
             realTimeData = realTimeData.copy(
                 speed = if (carPropertiesData.CurrentSpeed.value == null) null else ((carPropertiesData.CurrentSpeed.value as Float?)?: 0f).absoluteValue,
                 power = if (carPropertiesData.CurrentPower.value == null) null else emulatorPowerSign * ((carPropertiesData.CurrentPower.value as Float?)?: 0f),
                 batteryLevel = if (carPropertiesData.BatteryLevel.value == null) null else (carPropertiesData.BatteryLevel.value as Float?)?: 0f,
-                stateOfCharge = if (carPropertiesData.BatteryLevel.value == null) null else ((carPropertiesData.BatteryLevel.value as Float?)?: 0f) / staticVehicleData.batteryCapacity!!,
+                stateOfCharge = if (carPropertiesData.BatteryLevel.value == null) null else {
+                    val rawVal = (carPropertiesData.BatteryLevel.value as Float?) ?: 0f
+                    val cap = staticVehicleData.batteryCapacity ?: StaticVehicleData.DEFAULT_BATTERY_CAPACITY
+                    val soc = if (rawVal <= 1.0f && rawVal >= 0f) {
+                        rawVal
+                    } else if (rawVal <= 100.0f && rawVal > 1.0f && cap <= 100f) {
+                        rawVal / 100f
+                    } else if (cap > 0f) {
+                        rawVal / cap
+                    } else {
+                        rawVal / StaticVehicleData.DEFAULT_BATTERY_CAPACITY
+                    }
+                    if (carProperty == CarProperties.EV_BATTERY_LEVEL) {
+                        InAppLogger.logWithFirebase("[DataProcessor] Computed SoC: ${(soc * 100).toInt()}% (raw batteryLevel: $rawVal, capacity: ${cap / 1000f} kWh)", android.util.Log.INFO)
+                    }
+                    soc
+                },
                 ambientTemperature = if (carPropertiesData.CurrentAmbientTemperature.value == null) null else (carPropertiesData.CurrentAmbientTemperature.value as Float?)?: 0f,
                 selectedGear = if (carPropertiesData.CurrentGear.value == null) null else (carPropertiesData.CurrentGear.value as Int?)?: 0,
                 ignitionState = if (carPropertiesData.CurrentIgnitionState.value == null) null else (carPropertiesData.CurrentIgnitionState.value as Int?)?: 0,
                 chargePortConnected = if (carPropertiesData.ChargePortConnected.value == null) null else (carPropertiesData.ChargePortConnected.value as Boolean?)?: false
             )
         } catch (e: Throwable) {
-            InAppLogger.e("[NEO] Failed to update real time data!\n\r${e.stackTraceToString()}")
+            InAppLogger.logThrowableWithFirebase("[NEO] Failed to update real time data during property $carProperty", e)
             return
         }
 
@@ -308,18 +333,15 @@ class DataProcessor {
 
     /** Actions related to changes in the state of charge/battery level */
     private fun stateOfChargeUpdate() {
-        staticVehicleData.batteryCapacity?.let {
-            realTimeData.stateOfCharge?.let {
-                val currentStateOfCharge = it
-                if (previousStateOfCharge < 0) {
-                    previousStateOfCharge = currentStateOfCharge
-                    return
-                }
-                if (currentStateOfCharge != previousStateOfCharge) {
-                    // if (realTimeData.drivingState == DrivingState.DRIVE)
-                    //    updateUsedStateOfCharge((previousStateOfCharge - currentStateOfCharge).toDouble())
-                    previousStateOfCharge = currentStateOfCharge
-                }
+        realTimeData.stateOfCharge?.let { currentStateOfCharge ->
+            if (previousStateOfCharge < 0) {
+                previousStateOfCharge = currentStateOfCharge
+                return
+            }
+            if (currentStateOfCharge != previousStateOfCharge) {
+                // if (realTimeData.drivingState == DrivingState.DRIVE)
+                //    updateUsedStateOfCharge((previousStateOfCharge - currentStateOfCharge).toDouble())
+                previousStateOfCharge = currentStateOfCharge
             }
         }
     }

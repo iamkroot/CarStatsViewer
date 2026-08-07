@@ -25,7 +25,8 @@ class CarPropertiesClient(
     private val carPropertyListener = object : CarPropertyManager.CarPropertyEventCallback {
         override fun onChangeEvent(carPropertyValue: CarPropertyValue<*>) {
             if (carPropertyValue.status != CarPropertyValue.STATUS_AVAILABLE) {
-                InAppLogger.w("[CarPropertiesClient.carPropertyListener] Property ${CarProperties.getNameById(carPropertyValue.propertyId)} (${carPropertyValue.propertyId}) is currently not available. Status: ${carPropertyValue.status}.")
+                val warnMsg = "[CarPropertiesClient.carPropertyListener] Property ${CarProperties.getNameById(carPropertyValue.propertyId)} (${carPropertyValue.propertyId}) is currently not available. Status: ${carPropertyValue.status}."
+                InAppLogger.logWithFirebase(warnMsg, Log.WARN)
                 return
             }
             // With OTA 5.0.10, Polestar 2 reports power in a very slow interval, while speed is
@@ -38,7 +39,8 @@ class CarPropertiesClient(
             propertiesProcessor(carPropertyValue.propertyId)
         }
         override fun onErrorEvent(propertyId: Int, zone: Int) {
-            InAppLogger.e("[CarPropertiesClient.carPropertyListener] Received error car property event, propId=$propertyId")
+            val errorMsg = "[CarPropertiesClient.carPropertyListener] Received error car property event for ${CarProperties.getNameById(propertyId)} ($propertyId), zone=$zone"
+            InAppLogger.logWithFirebase(errorMsg, Log.ERROR)
         }
     }
 
@@ -99,20 +101,11 @@ class CarPropertiesClient(
 
         if (_registeredProperties.contains(propertyId)) return true
 
-        // Debug condition to emulate Polestar 4
-        // if (emulatorMode && debugTemperatureAttempt < 2 && propertyId == CarProperties.ENV_OUTSIDE_TEMPERATURE) {
-        //     debugTemperatureAttempt++
-        //     return false
-        // }
-
-        if (!checkPropertyAvailability(propertyId, 0)) { return false }
-
-        // This crashes on the Polestar 2 Emulator
-        // return carPropertyManager.subscribePropertyEvents(
-        //     propertyId,
-        //     (CarProperties.sensorRateMap[propertyId])?:0f,
-        //     carPropertyListener
-        // )
+        if (!checkPropertyAvailability(propertyId, 0)) {
+            val warnMsg = "[CarPropertiesClient] Property ${CarProperties.getNameById(propertyId)} ($propertyId) is NOT available via checkPropertyAvailability"
+            InAppLogger.logWithFirebase(warnMsg, Log.WARN)
+            return false
+        }
 
         if (carPropertyManager.registerCallback(
             carPropertyListener,
@@ -120,10 +113,13 @@ class CarPropertiesClient(
             (CarProperties.sensorRateMap[propertyId])?:0f
         )) {
             _registeredProperties.add(propertyId)
-            InAppLogger.d("[CarPropertiesClient] $propertyId registered")
+            val infoMsg = "[CarPropertiesClient] ${CarProperties.getNameById(propertyId)} ($propertyId) registered successfully"
+            InAppLogger.logWithFirebase(infoMsg, Log.INFO)
             return true
         }
 
+        val errorMsg = "[CarPropertiesClient] Failed to register callback for ${CarProperties.getNameById(propertyId)} ($propertyId)"
+        InAppLogger.logWithFirebase(errorMsg, Log.ERROR)
         return false
     }
 

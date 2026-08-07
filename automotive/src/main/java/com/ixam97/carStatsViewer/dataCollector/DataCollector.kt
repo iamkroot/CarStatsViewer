@@ -19,6 +19,7 @@ import com.ixam97.carStatsViewer.R
 import com.ixam97.carStatsViewer.carPropertiesClient.CarProperties
 import com.ixam97.carStatsViewer.carPropertiesClient.CarPropertiesClient
 import com.ixam97.carStatsViewer.dataProcessor.DataProcessor
+import com.ixam97.carStatsViewer.dataProcessor.StaticVehicleData
 import com.ixam97.carStatsViewer.emulatorMode
 import com.ixam97.carStatsViewer.locationClient.DefaultLocationClient
 import com.ixam97.carStatsViewer.locationClient.LocationClient
@@ -308,8 +309,13 @@ class DataCollector: Service() {
 
     fun readStaticProperties() {
         InAppLogger.d("[NEO] Attempting to read static Properties...")
+        val vhalCapacity = carPropertiesClient?.getFloatProperty(CarProperties.INFO_EV_BATTERY_CAPACITY)
+        val finalCapacity = vhalCapacity ?: dataProcessor.staticVehicleData.batteryCapacity ?: StaticVehicleData.DEFAULT_BATTERY_CAPACITY
+        if (vhalCapacity == null) {
+            InAppLogger.w("[NEO] INFO_EV_BATTERY_CAPACITY is null/unsupported on this vehicle. Using fallback capacity: ${finalCapacity / 1000f} kWh")
+        }
         dataProcessor.staticVehicleData = dataProcessor.staticVehicleData.copy(
-            batteryCapacity = carPropertiesClient?.getFloatProperty(CarProperties.INFO_EV_BATTERY_CAPACITY),
+            batteryCapacity = finalCapacity,
             vehicleMake =  emulatorCarMake(),
             modelName = carPropertiesClient?.getStringProperty(CarProperties.INFO_MODEL),
             distanceUnit = when (carPropertiesClient?.getIntProperty(CarProperties.DISTANCE_DISPLAY_UNITS)) {

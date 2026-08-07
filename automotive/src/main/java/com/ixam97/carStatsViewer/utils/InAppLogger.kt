@@ -92,6 +92,9 @@ object InAppLogger {
         if (CarStatsViewer.appContext.getString(R.string.useFirebase) == "true") {
             try {
                 Firebase.crashlytics.log(message)
+                if (type >= Log.WARN) {
+                    Firebase.crashlytics.recordException(Exception(message))
+                }
             } catch (_: Throwable) {
                 e("Firebase was configured enabled but failed to init!")
             }
