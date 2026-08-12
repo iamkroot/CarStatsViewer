@@ -76,8 +76,13 @@ class CarPropertiesClient(
 
     fun updateProperty(propertyId: Int) {
         // if (emulatorMode && propertyId == CarProperties.ENV_OUTSIDE_TEMPERATURE && debugTemperatureAttempt < 2) return
-        carPropertyManager.getProperty<Any>(propertyId, 0)?.let {
-            carPropertiesData.update(it, allowInvalidTimestamps = true, doLog = false)
+        try {
+            carPropertyManager.getProperty<Any>(propertyId, 0)?.let {
+                carPropertiesData.update(it, allowInvalidTimestamps = true, doLog = false)
+            }
+        } catch (e: Exception) {
+            InAppLogger.w("[CarPropertiesClient] Failed to update ${CarProperties.getNameById(propertyId)} ($propertyId): ${e.message}")
+            return
         }
         propertiesProcessor(propertyId)
     }
