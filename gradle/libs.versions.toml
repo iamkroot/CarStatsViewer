@@ -26,6 +26,7 @@ okhttp3 = "5.3.2"
 window = "1.5.1"
 nav3Core = "1.1.2"
 carcompose = "78c184f7"
+playPublisher = "4.1.1"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
@@ -84,3 +85,4 @@ googleServices = { id = "com.google.gms.google-services", version.ref = "google-
 firebaseCrashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebase-crashlytics"}
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize",  version.ref = "kotlin"  }
 google-ksp = { id = "com.google.devtools.ksp", version = "2.3.4"}
+playPublisher = { id = "com.github.triplet.play", version.ref = "playPublisher" }

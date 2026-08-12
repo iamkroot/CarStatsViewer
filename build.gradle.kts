@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.googleServices) apply false
     alias(libs.plugins.firebaseCrashlytics) apply false
     alias(libs.plugins.google.ksp) apply false
+    alias(libs.plugins.playPublisher) apply false
 }
 
 tasks.register<Delete>("clean") {

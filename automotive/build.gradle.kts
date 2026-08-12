@@ -21,6 +21,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.google.ksp)
+    alias(libs.plugins.playPublisher)
 
 }
 if (firebase) {
@@ -110,6 +111,12 @@ android {
             pickFirsts += listOf("META-INF/LICENSE.md", "META-INF/NOTICE.md")
         }
     }
+}
+
+play {
+    serviceAccountCredentials.set(file("release/play-console-key.json"))
+    track.set("internal")
+    defaultToAppBundles.set(true)
 }
 
 dependencies {
