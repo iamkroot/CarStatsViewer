@@ -140,7 +140,7 @@ class AbrpLiveData (
 
         if (realTimeData.isInitialized()) {
             connectionStatus = send(AbrpDataSet(
-                stateOfCharge = (realTimeData.stateOfCharge!! * 100f).roundToInt(),
+                stateOfCharge = ((realTimeData.stateOfCharge ?: 0f) * 100f).roundToInt(),
                 power = realTimeData.power?:0f,
                 speed = realTimeData.speed?:0f,
                 isCharging = realTimeData.chargePortConnected?:false,

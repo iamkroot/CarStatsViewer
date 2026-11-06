@@ -55,6 +55,7 @@ import com.ixam97.carStatsViewer.R
 import com.ixam97.carStatsViewer.carCompose.theme.CarComposeIcon
 import com.ixam97.carStatsViewer.compose.theme.polestarOrange
 import com.ixam97.carStatsViewer.database.tripData.DrivingSession
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import de.ixam97.carcompose.components.controls.CarButton
 import de.ixam97.carcompose.components.controls.CarRow
@@ -560,6 +561,18 @@ private fun CompactDataColumn(
     drivingSession: DrivingSession,
     onClick: () -> Unit
 ) {
+    androidx.compose.runtime.LaunchedEffect(drivingSession.driving_session_id) {
+        FirebaseDiagnostics.logRenderedValues("CarComposeTripDetails", mapOf(
+            "sessionId" to drivingSession.driving_session_id,
+            "sessionType" to drivingSession.session_type,
+            "distance" to StringFormatters.getTraveledDistanceString(drivingSession.driven_distance.toFloat()),
+            "energy" to StringFormatters.getEnergyString(drivingSession.used_energy.toFloat()),
+            "consumption" to StringFormatters.getAvgConsumptionString(drivingSession.used_energy.toFloat(), drivingSession.driven_distance.toFloat()),
+            "speed" to StringFormatters.getAvgSpeedString(drivingSession.driven_distance.toFloat(), drivingSession.drive_time),
+            "time" to StringFormatters.getElapsedTimeString(drivingSession.drive_time, true)
+        ))
+    }
+
     Column(
         modifier = modifier
             .clickable(onClick = onClick)

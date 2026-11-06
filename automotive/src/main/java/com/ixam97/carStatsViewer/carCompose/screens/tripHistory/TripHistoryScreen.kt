@@ -45,6 +45,7 @@ import com.ixam97.carStatsViewer.database.tripData.DrivingSession
 import com.ixam97.carStatsViewer.database.tripData.DummyTripData
 import com.ixam97.carStatsViewer.database.tripData.TripType
 import com.ixam97.carStatsViewer.emulatorMode
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import de.ixam97.carcompose.components.controls.CarButton
 import de.ixam97.carcompose.components.controls.CarButtonDefaults
@@ -370,6 +371,17 @@ internal fun DrivingSessionRow(
 ) {
 
     val rowTitle = "${StringFormatters.getDateString(Date(drivingSession.start_epoch_time))}, ID: ${drivingSession.driving_session_id}"
+
+    LaunchedEffect(drivingSession.driving_session_id) {
+        FirebaseDiagnostics.logRenderedValues("CarComposeTripHistory", mapOf(
+            "sessionId" to drivingSession.driving_session_id,
+            "sessionType" to drivingSession.session_type,
+            "distance" to StringFormatters.getTraveledDistanceString(drivingSession.driven_distance.toFloat()),
+            "energy" to StringFormatters.getEnergyString(drivingSession.used_energy.toFloat()),
+            "consumption" to StringFormatters.getAvgConsumptionString(drivingSession.used_energy.toFloat(), drivingSession.driven_distance.toFloat()),
+            "time" to StringFormatters.getElapsedTimeString(drivingSession.drive_time, true)
+        ))
+    }
     @Composable
     fun LeadingContent() {
         Icon(

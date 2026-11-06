@@ -34,6 +34,7 @@ import com.ixam97.carStatsViewer.repository.dataExport.DataExportRepository
 import com.ixam97.carStatsViewer.repository.logSubmit.LogSubmitRepository
 import com.ixam97.carStatsViewer.ui.views.MultiButtonWidget
 import com.ixam97.carStatsViewer.utils.ChangeLogCreator.createChangelog
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.InAppLogger
 import com.ixam97.carStatsViewer.utils.ScreenshotButton
 import com.ixam97.carStatsViewer.utils.ScreenshotService
@@ -220,6 +221,13 @@ class CarStatsViewer : Application() {
         }
 
         InAppLogger.i("${appContext.getString(R.string.app_name)} v${BuildConfig.VERSION_NAME} started")
+        FirebaseDiagnostics.initFirebase()
+        FirebaseDiagnostics.setCustomKey("brand", Build.BRAND)
+        FirebaseDiagnostics.setCustomKey("model", Build.MODEL)
+        FirebaseDiagnostics.setCustomKey("device", Build.DEVICE)
+        FirebaseDiagnostics.setCustomKey("app_version", BuildConfig.VERSION_NAME)
+        FirebaseDiagnostics.setCustomKey("build_type", BuildConfig.BUILD_TYPE)
+        FirebaseDiagnostics.setCustomKey("flavor", BuildConfig.FLAVOR)
         InAppLogger.logWithFirebase("Device Info: Brand: ${Build.BRAND}, model: ${Build.MODEL}, device: ${Build.DEVICE}")
 
         InAppLogger.d("Screen width: ${resources.configuration.screenWidthDp}dp")

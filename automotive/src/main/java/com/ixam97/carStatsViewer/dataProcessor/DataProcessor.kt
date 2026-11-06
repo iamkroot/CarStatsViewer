@@ -15,6 +15,7 @@ import com.ixam97.carStatsViewer.emulatorMode
 import com.ixam97.carStatsViewer.emulatorPowerSign
 import com.ixam97.carStatsViewer.liveDataApi.http.HttpLiveData
 import com.ixam97.carStatsViewer.ui.plot.enums.PlotLineMarkerType
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.InAppLogger
 import com.ixam97.carStatsViewer.utils.Ticker
 import com.ixam97.carStatsViewer.utils.TimeTracker
@@ -33,6 +34,29 @@ import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 class DataProcessor {
+    companion object {
+        fun computeStateOfCharge(batteryLevelVal: Any?, staticCapacity: Float?): Pair<Float?, String> {
+            val rawNum = (batteryLevelVal as? Number)?.toFloat()
+                ?: return null to "raw BatteryLevel is NULL or not a Number ($batteryLevelVal)"
+
+            if (!rawNum.isFinite() || rawNum < 0f) {
+                return (if (rawNum < 0f) 0f else null) to "invalid raw BatteryLevel: $rawNum"
+            }
+
+            val capInWh = staticCapacity?.takeIf { it > 1000f && it.isFinite() }
+                ?: StaticVehicleData.DEFAULT_BATTERY_CAPACITY
+
+            val soc = if (staticCapacity != null && staticCapacity <= 100f) {
+                if (rawNum <= 1.0f) rawNum else rawNum / 100f
+            } else {
+                rawNum / capInWh
+            }
+
+            val finalSoc = if (soc.isFinite()) soc.coerceIn(0.0f, 1.0f) else null
+            return finalSoc to "raw=$rawNum, capInWh=$capInWh, finalSoc=$finalSoc"
+        }
+    }
+
     val carPropertiesData = CarPropertiesData()
 
     val chargingPointInterval = 5_000
@@ -187,40 +211,38 @@ class DataProcessor {
         }
 
         if (carProperty == CarProperties.EV_BATTERY_LEVEL) {
-            if (carPropertiesData.BatteryLevel.value == null) {
-                InAppLogger.logWithFirebase("[DataProcessor] EV_BATTERY_LEVEL event received but BatteryLevel value is NULL", android.util.Log.WARN)
+            val raw = carPropertiesData.BatteryLevel.value
+            if (raw == null) {
+                FirebaseDiagnostics.logDiagnostic("BATTERY_RAW_NULL", "EV_BATTERY_LEVEL event received but BatteryLevel value is NULL")
             } else {
-                val raw = carPropertiesData.BatteryLevel.value as? Float
-                InAppLogger.logWithFirebase("[DataProcessor] EV_BATTERY_LEVEL raw value received: $raw", android.util.Log.INFO)
+                FirebaseDiagnostics.logDiagnostic("BATTERY_RAW_VAL", "EV_BATTERY_LEVEL raw value received: $raw (${raw.javaClass.simpleName})")
             }
         }
 
         try {
+            val (computedSoc, socDiag) = computeStateOfCharge(
+                carPropertiesData.BatteryLevel.value,
+                staticVehicleData.batteryCapacity
+            )
+
+            if (carProperty == CarProperties.EV_BATTERY_LEVEL) {
+                FirebaseDiagnostics.logDiagnostic(
+                    "BATTERY_COMPUTED_SOC",
+                    "SoC=${computedSoc?.let { (it * 100).roundToInt() }}%, $socDiag"
+                )
+                FirebaseDiagnostics.setCustomKey("battery_raw_value", carPropertiesData.BatteryLevel.value?.toString() ?: "null")
+                FirebaseDiagnostics.setCustomKey("battery_soc_percent", computedSoc?.let { "${(it * 100).roundToInt()}%" } ?: "null")
+            }
+
             realTimeData = realTimeData.copy(
-                speed = if (carPropertiesData.CurrentSpeed.value == null) null else ((carPropertiesData.CurrentSpeed.value as Float?)?: 0f).absoluteValue,
-                power = if (carPropertiesData.CurrentPower.value == null) null else emulatorPowerSign * ((carPropertiesData.CurrentPower.value as Float?)?: 0f),
-                batteryLevel = if (carPropertiesData.BatteryLevel.value == null) null else (carPropertiesData.BatteryLevel.value as Float?)?: 0f,
-                stateOfCharge = if (carPropertiesData.BatteryLevel.value == null) null else {
-                    val rawVal = (carPropertiesData.BatteryLevel.value as Float?) ?: 0f
-                    val cap = staticVehicleData.batteryCapacity ?: StaticVehicleData.DEFAULT_BATTERY_CAPACITY
-                    val soc = if (rawVal <= 1.0f && rawVal >= 0f) {
-                        rawVal
-                    } else if (rawVal <= 100.0f && rawVal > 1.0f && cap <= 100f) {
-                        rawVal / 100f
-                    } else if (cap > 0f) {
-                        rawVal / cap
-                    } else {
-                        rawVal / StaticVehicleData.DEFAULT_BATTERY_CAPACITY
-                    }
-                    if (carProperty == CarProperties.EV_BATTERY_LEVEL) {
-                        InAppLogger.logWithFirebase("[DataProcessor] Computed SoC: ${(soc * 100).toInt()}% (raw batteryLevel: $rawVal, capacity: ${cap / 1000f} kWh)", android.util.Log.INFO)
-                    }
-                    soc
-                },
-                ambientTemperature = if (carPropertiesData.CurrentAmbientTemperature.value == null) null else (carPropertiesData.CurrentAmbientTemperature.value as Float?)?: 0f,
-                selectedGear = if (carPropertiesData.CurrentGear.value == null) null else (carPropertiesData.CurrentGear.value as Int?)?: 0,
-                ignitionState = if (carPropertiesData.CurrentIgnitionState.value == null) null else (carPropertiesData.CurrentIgnitionState.value as Int?)?: 0,
-                chargePortConnected = if (carPropertiesData.ChargePortConnected.value == null) null else (carPropertiesData.ChargePortConnected.value as Boolean?)?: false
+                speed = if (carPropertiesData.CurrentSpeed.value == null) null else ((carPropertiesData.CurrentSpeed.value as? Number)?.toFloat() ?: 0f).absoluteValue,
+                power = if (carPropertiesData.CurrentPower.value == null) null else emulatorPowerSign * ((carPropertiesData.CurrentPower.value as? Number)?.toFloat() ?: 0f),
+                batteryLevel = if (carPropertiesData.BatteryLevel.value == null) null else (carPropertiesData.BatteryLevel.value as? Number)?.toFloat() ?: 0f,
+                stateOfCharge = computedSoc,
+                ambientTemperature = if (carPropertiesData.CurrentAmbientTemperature.value == null) null else (carPropertiesData.CurrentAmbientTemperature.value as? Number)?.toFloat() ?: 0f,
+                selectedGear = if (carPropertiesData.CurrentGear.value == null) null else (carPropertiesData.CurrentGear.value as? Number)?.toInt() ?: 0,
+                ignitionState = if (carPropertiesData.CurrentIgnitionState.value == null) null else (carPropertiesData.CurrentIgnitionState.value as? Number)?.toInt() ?: 0,
+                chargePortConnected = if (carPropertiesData.ChargePortConnected.value == null) null else (carPropertiesData.ChargePortConnected.value as? Boolean) ?: false
             )
         } catch (e: Throwable) {
             InAppLogger.logThrowableWithFirebase("[NEO] Failed to update real time data during property $carProperty", e)

@@ -65,7 +65,9 @@ data class PlotLineItem (
         }
 
         fun cord(index: Float, min: Float, max: Float) : Float {
-            return 1f / (max - min) * (index - min)
+            if (max == min) return 0.5f
+            val result = 1f / (max - min) * (index - min)
+            return if (result.isFinite()) result else 0.5f
         }
 
         fun cord(index: Long?, min: Long, max: Long) : Float? {
@@ -76,7 +78,9 @@ data class PlotLineItem (
         }
 
         fun cord(index: Long, min: Long, max: Long) : Float {
-            return 1f / (max - min) * (index - min)
+            if (max == min) return 0.5f
+            val result = 1f / (max - min) * (index - min)
+            return if (result.isFinite()) result else 0.5f
         }
     }
 }

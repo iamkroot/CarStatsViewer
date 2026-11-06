@@ -23,10 +23,12 @@ import com.ixam97.carStatsViewer.dataProcessor.RealTimeData
 import com.ixam97.carStatsViewer.database.tripData.DrivingSession
 import com.ixam97.carStatsViewer.database.tripData.TripType
 import com.ixam97.carStatsViewer.liveDataApi.ConnectionStatus
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class TripDataTemplate(val carContext: CarContext) {
 
@@ -59,28 +61,47 @@ class TripDataTemplate(val carContext: CarContext) {
             setLoading(true)
         } else {
             session.let {
+                val distStr = StringFormatters.getTraveledDistanceString(it.driven_distance.toFloat())
+                val consStr = StringFormatters.getAvgConsumptionString(it.used_energy.toFloat(), it.driven_distance.toFloat())
+                val speedStr = StringFormatters.getAvgSpeedString(it.driven_distance.toFloat(), it.drive_time)
+                val timeStr = StringFormatters.getElapsedTimeString(it.drive_time, true)
+                val energyStr = StringFormatters.getEnergyString(it.used_energy.toFloat())
+                val socPercent = ((realTimeData?.stateOfCharge ?: 0f) * 100f).roundToInt()
+
+                FirebaseDiagnostics.logRenderedValues("TripDataPane", mapOf(
+                    "distance" to distStr,
+                    "avg_consumption" to consStr,
+                    "avg_speed" to speedStr,
+                    "elapsed_time" to timeStr,
+                    "used_energy" to energyStr,
+                    "soc" to "$socPercent%",
+                    "power_kw" to (realTimeData?.power?.let { p -> p / 1_000_000f } ?: 0f),
+                    "batteryLevel" to realTimeData?.batteryLevel,
+                    "stateOfCharge" to realTimeData?.stateOfCharge
+                ))
+
                 addRow(createDataRow(
-                    StringFormatters.getTraveledDistanceString(it.driven_distance.toFloat()),
+                    distStr,
                     carContext.getString(R.string.summary_traveled_distance),
                     R.drawable.ic_distance_large
                 ))
                 addRow(createDataRow(
-                    StringFormatters.getAvgConsumptionString(it.used_energy.toFloat(), it.driven_distance.toFloat()),
+                    consStr,
                     carContext.getString(R.string.summary_average_consumption),
                     R.drawable.ic_diagram
                 ))
                 addRow(createDataRow(
-                    StringFormatters.getAvgSpeedString(it.driven_distance.toFloat(), it.drive_time),
+                    speedStr,
                     carContext.getString(R.string.summary_speed),
                     R.drawable.ic_speed_large
                 ))
                 addRow(createDataRow(
-                    StringFormatters.getElapsedTimeString(it.drive_time, true),
+                    timeStr,
                     carContext.getString(R.string.summary_travel_time),
                     R.drawable.ic_time_large
                 ))
                 addRow(createDataRow(
-                    StringFormatters.getEnergyString(it.used_energy.toFloat()),
+                    energyStr,
                     carContext.getString(R.string.summary_used_energy),
                     R.drawable.ic_energy_large
                 ))

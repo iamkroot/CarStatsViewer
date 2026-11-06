@@ -44,6 +44,7 @@ import com.ixam97.carStatsViewer.ui.plot.objects.PlotLineConfiguration
 import com.ixam97.carStatsViewer.ui.plot.objects.PlotRange
 import com.ixam97.carStatsViewer.utils.DataConverters
 import com.ixam97.carStatsViewer.utils.DistanceUnitEnum
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.InAppLogger
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import com.ixam97.carStatsViewer.utils.Ticker
@@ -215,16 +216,24 @@ class MainActivity : FragmentActivity() {
                             mainPowerGage.setValue((it.power?:0f) / 1_000_000f)
 
                             mainChargeGage.setValue((it.power?:0f) / -1_000_000f)
-                            mainSoCGage.setValue((it.stateOfCharge!! * 100f).roundToInt())
+                            val currentSocPercent = ((it.stateOfCharge ?: 0f) * 100f).roundToInt()
+                            mainSoCGage.setValue(currentSocPercent)
+                            mainSocGage.setValue(currentSocPercent)
 
                             mainSpeedGage.setValue(
-                                appPreferences.distanceUnit.toUnit(it.speed!! * 3.6).toInt()
+                                appPreferences.distanceUnit.toUnit((it.speed ?: 0f) * 3.6).toInt()
                             )
-                            CarStatsViewer.dataProcessor.staticVehicleData.batteryCapacity?.let { batteryCapacity ->
-                                mainSocGage.setValue((it.batteryLevel!! / (batteryCapacity) * 100).roundToInt())
-                            }
 
-                            if (it.speed > .1 && !moving) {
+                            FirebaseDiagnostics.logRenderedValues("MainActivity", mapOf(
+                                "mainSocGage" to "$currentSocPercent%",
+                                "mainSoCGage" to "$currentSocPercent%",
+                                "power" to ((it.power?:0f) / 1_000_000f),
+                                "speed" to ((it.speed ?: 0f) * 3.6),
+                                "stateOfCharge" to it.stateOfCharge,
+                                "batteryLevel" to it.batteryLevel
+                            ))
+
+                            if ((it.speed ?: 0f) > .1 && !moving) {
                                 setSnow(true)
                                 moving = true
                                 // main_button_summary.isEnabled = false
@@ -238,7 +247,7 @@ class MainActivity : FragmentActivity() {
                                     getColor(R.color.disabled_tint),
                                     PorterDuff.Mode.SRC_IN
                                 )
-                            } else if (it.speed <= .1 && moving) {
+                            } else if ((it.speed ?: 0f) <= .1 && moving) {
                                 setSnow(false)
                                 moving = false
                                 // main_button_summary.isEnabled = true
@@ -750,6 +759,13 @@ class MainActivity : FragmentActivity() {
         mainSoCGage.minValue = 0f
         mainSoCGage.maxValue = 100f
         mainSoCGage.setValue(0f)
+
+        mainSocGage.gageName = getString(R.string.main_gage_SoC)
+        mainSocGage.gageUnit = "%"
+        mainSocGage.primaryColor = getColor(R.color.charge_plot_color)
+        mainSocGage.minValue = 0f
+        mainSocGage.maxValue = 100f
+        mainSocGage.setValue(0f)
     }
 
     private fun setUiEventListeners() = with(binding) {

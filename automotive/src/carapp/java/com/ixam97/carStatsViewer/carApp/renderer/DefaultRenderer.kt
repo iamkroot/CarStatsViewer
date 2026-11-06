@@ -306,7 +306,7 @@ class DefaultRenderer(val carContext: CarContext): Renderer {
             }
 
             val instCons = realTimeData?.instConsumption
-            if (instCons != null && realTimeData?.speed!! * 3.6 > 3) {
+            if (instCons != null && (realTimeData?.speed ?: 0f) * 3.6 > 3) {
                 if (consumptionUnit) {
                     consGage.setValue(distanceUnit.asUnit(instCons).roundToInt())
                 } else {

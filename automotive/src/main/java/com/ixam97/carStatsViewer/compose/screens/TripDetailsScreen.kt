@@ -86,6 +86,7 @@ import com.ixam97.carStatsViewer.ui.plot.objects.PlotLineConfiguration
 import com.ixam97.carStatsViewer.ui.plot.objects.PlotRange
 import com.ixam97.carStatsViewer.ui.views.PlotView
 import com.ixam97.carStatsViewer.utils.DataConverters
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import com.ixam97.carStatsViewer.utils.getColorFromAttribute
 import kotlinx.coroutines.Dispatchers
@@ -726,10 +727,10 @@ fun ChargingSessions(
 
                 val endSoc = viewModel.tripDetailsState.drivingSession?.drivingPoints?.find {
                     it.driving_point_epoch_time >= session.end_epoch_time!!
-                }?.state_of_charge?: session.chargingPoints?.last()?.state_of_charge
+                }?.state_of_charge?: session.chargingPoints?.lastOrNull()?.state_of_charge
                 val startSoc = viewModel.tripDetailsState.drivingSession?.drivingPoints?.findLast {
                     it.driving_point_epoch_time <= session.start_epoch_time
-                }?.state_of_charge?: session.chargingPoints?.first()?.state_of_charge
+                }?.state_of_charge?: session.chargingPoints?.firstOrNull()?.state_of_charge
 
                 val socString = if (endSoc != null && startSoc != null) {
                     String.format(
@@ -738,6 +739,15 @@ fun ChargingSessions(
                         (endSoc * 100f).roundToInt(),
                     )
                 } else stringResource(R.string.summary_soc_unavailable)
+
+                LaunchedEffect(session.charging_session_id) {
+                    FirebaseDiagnostics.logRenderedValues("ComposeTripDetailsItem", mapOf(
+                        "sessionId" to session.charging_session_id,
+                        "socString" to socString,
+                        "startSoc" to startSoc,
+                        "endSoc" to endSoc
+                    ))
+                }
 
                 Column (
                     modifier = Modifier.fillMaxWidth()
@@ -789,10 +799,10 @@ fun ChargingSessionDetails(
 
     val endSoc = viewModel.tripDetailsState.drivingSession?.drivingPoints?.find {
         it.driving_point_epoch_time >= session.end_epoch_time!!
-    }?.state_of_charge?: session.chargingPoints?.last()?.state_of_charge
+    }?.state_of_charge?: session.chargingPoints?.lastOrNull()?.state_of_charge
     val startSoc = viewModel.tripDetailsState.drivingSession?.drivingPoints?.findLast {
         it.driving_point_epoch_time <= session.start_epoch_time
-    }?.state_of_charge?: session.chargingPoints?.first()?.state_of_charge
+    }?.state_of_charge?: session.chargingPoints?.firstOrNull()?.state_of_charge
 
     val socString = if (endSoc != null && startSoc != null) {
         String.format(
@@ -801,6 +811,15 @@ fun ChargingSessionDetails(
             (endSoc * 100f).roundToInt(),
         )
     } else stringResource(R.string.summary_soc_unavailable)
+
+    LaunchedEffect(session.charging_session_id) {
+        FirebaseDiagnostics.logRenderedValues("ComposeTripDetailsOverlay", mapOf(
+            "sessionId" to session.charging_session_id,
+            "socString" to socString,
+            "startSoc" to startSoc,
+            "endSoc" to endSoc
+        ))
+    }
 
     val context = LocalContext.current
 

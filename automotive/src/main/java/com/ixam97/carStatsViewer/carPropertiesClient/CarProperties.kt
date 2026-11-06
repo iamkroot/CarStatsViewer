@@ -58,7 +58,7 @@ object CarProperties {
         EV_BATTERY_INSTANTANEOUS_CHARGE_RATE to 100f,
         GEAR_SELECTION to 0f,
         EV_CHARGE_PORT_CONNECTED to 0f,
-        EV_BATTERY_LEVEL to 0f,
+        EV_BATTERY_LEVEL to 1f,
         IGNITION_STATE to 0f,
         ENV_OUTSIDE_TEMPERATURE to 0f,
         EV_BATTERY_AVERAGE_TEMPERATURE to 0f

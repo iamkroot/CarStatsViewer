@@ -89,7 +89,7 @@ object InAppLogger {
     }
 
     fun logWithFirebase(message: String, type: Int = Log.INFO) {
-        if (CarStatsViewer.appContext.getString(R.string.useFirebase) == "true") {
+        if (FirebaseDiagnostics.isFirebaseEnabled) {
             try {
                 Firebase.crashlytics.log(message)
                 if (type >= Log.WARN) {
@@ -103,7 +103,7 @@ object InAppLogger {
     }
 
     fun logThrowableWithFirebase(message: String, e: Throwable) {
-        if (CarStatsViewer.appContext.getString(R.string.useFirebase) == "true") {
+        if (FirebaseDiagnostics.isFirebaseEnabled) {
             try {
                 Firebase.crashlytics.log(message)
                 Firebase.crashlytics.recordException(e)
@@ -113,6 +113,14 @@ object InAppLogger {
         }
         e(message)
         e(e.stackTraceToString())
+    }
+
+    fun logDiagnosticToFirebase(category: String, message: String) {
+        FirebaseDiagnostics.logDiagnostic(category, message)
+    }
+
+    fun logRenderedStatsToFirebase(screenName: String, renderedValues: Map<String, Any?>) {
+        FirebaseDiagnostics.logRenderedValues(screenName, renderedValues)
     }
 
     suspend fun getLogString(logLevel: Int = Log.VERBOSE, logLength: Int = 0): String {

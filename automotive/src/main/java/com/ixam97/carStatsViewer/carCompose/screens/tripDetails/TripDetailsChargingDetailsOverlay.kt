@@ -36,6 +36,7 @@ import com.ixam97.carStatsViewer.R
 import com.ixam97.carStatsViewer.carCompose.deviceIsWideScreen
 import com.ixam97.carStatsViewer.carCompose.theme.polestar4ContentPadding
 import com.ixam97.carStatsViewer.map.MapboxInterface
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import de.ixam97.carcompose.components.controls.CarButton
 import de.ixam97.carcompose.components.controls.CarRow
@@ -104,10 +105,10 @@ private fun TripDetailsChargingDetailsOverlayContent(
 
     val endSoc = tripDetailsState.drivingSession?.drivingPoints?.find {
         it.driving_point_epoch_time >= chargingSessionDetails.chargingSession.end_epoch_time
-    }?.state_of_charge?: chargingSessionDetails.chargingSession.chargingPoints?.last()?.state_of_charge
+    }?.state_of_charge?: chargingSessionDetails.chargingSession.chargingPoints?.lastOrNull()?.state_of_charge
     val startSoc = tripDetailsState.drivingSession?.drivingPoints?.findLast {
         it.driving_point_epoch_time <= chargingSessionDetails.chargingSession.start_epoch_time
-    }?.state_of_charge?: chargingSessionDetails.chargingSession.chargingPoints?.first()?.state_of_charge
+    }?.state_of_charge?: chargingSessionDetails.chargingSession.chargingPoints?.firstOrNull()?.state_of_charge
 
     val socString = if (endSoc != null && startSoc != null) {
         String.format(
@@ -116,6 +117,17 @@ private fun TripDetailsChargingDetailsOverlayContent(
             (endSoc * 100f).roundToInt(),
         )
     } else stringResource(R.string.summary_soc_unavailable)
+
+    val sessionId = chargingSessionDetails.chargingSession.charging_session_id
+    androidx.compose.runtime.LaunchedEffect(sessionId) {
+        FirebaseDiagnostics.logRenderedValues("TripDetailsChargingOverlay", mapOf(
+            "sessionId" to sessionId,
+            "socString" to socString,
+            "startSoc" to startSoc,
+            "endSoc" to endSoc,
+            "chargedEnergy" to chargingSessionDetails.chargingSession.charged_energy
+        ))
+    }
 
     Column(
         modifier = modifier

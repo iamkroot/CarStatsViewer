@@ -1,0 +1,4 @@
+[env]
+PACKAGE_NAME = "dev.kroot.carStatsViewer"
+GRADLE_TASK_BUNDLE = "automotive:bundleStableCarappRelease"
+GRADLE_TASK_APK = "automotive:assembleStableCarappRelease"

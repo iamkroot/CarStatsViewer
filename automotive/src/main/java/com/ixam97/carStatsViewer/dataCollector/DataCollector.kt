@@ -25,6 +25,7 @@ import com.ixam97.carStatsViewer.locationClient.DefaultLocationClient
 import com.ixam97.carStatsViewer.locationClient.LocationClient
 import com.ixam97.carStatsViewer.ui.activities.MainActivity
 import com.ixam97.carStatsViewer.utils.DistanceUnitEnum
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.InAppLogger
 import com.ixam97.carStatsViewer.utils.ScreenshotService
 import com.ixam97.carStatsViewer.utils.StringFormatters
@@ -310,10 +311,20 @@ class DataCollector: Service() {
     fun readStaticProperties() {
         InAppLogger.d("[NEO] Attempting to read static Properties...")
         val vhalCapacity = carPropertiesClient?.getFloatProperty(CarProperties.INFO_EV_BATTERY_CAPACITY)
-        val finalCapacity = vhalCapacity ?: dataProcessor.staticVehicleData.batteryCapacity ?: StaticVehicleData.DEFAULT_BATTERY_CAPACITY
-        if (vhalCapacity == null) {
-            InAppLogger.w("[NEO] INFO_EV_BATTERY_CAPACITY is null/unsupported on this vehicle. Using fallback capacity: ${finalCapacity / 1000f} kWh")
+        val finalCapacity = if (vhalCapacity != null && vhalCapacity > 0f && vhalCapacity.isFinite()) {
+            vhalCapacity
+        } else {
+            dataProcessor.staticVehicleData.batteryCapacity?.takeIf { it > 0f && it.isFinite() } ?: StaticVehicleData.DEFAULT_BATTERY_CAPACITY
         }
+        if (vhalCapacity == null || vhalCapacity <= 0f) {
+            val warnMsg = "[NEO] INFO_EV_BATTERY_CAPACITY is ${vhalCapacity ?: "null"}. Using fallback capacity: ${finalCapacity / 1000f} kWh"
+            InAppLogger.w(warnMsg)
+            FirebaseDiagnostics.logDiagnostic("CAPACITY_FALLBACK", warnMsg)
+        } else {
+            FirebaseDiagnostics.logDiagnostic("CAPACITY_VHAL", "Read INFO_EV_BATTERY_CAPACITY: $vhalCapacity (${vhalCapacity / 1000f} kWh)")
+        }
+        FirebaseDiagnostics.setCustomKey("vhal_capacity", vhalCapacity?.toString() ?: "null")
+        FirebaseDiagnostics.setCustomKey("effective_capacity", finalCapacity.toString())
         dataProcessor.staticVehicleData = dataProcessor.staticVehicleData.copy(
             batteryCapacity = finalCapacity,
             vehicleMake =  emulatorCarMake(),

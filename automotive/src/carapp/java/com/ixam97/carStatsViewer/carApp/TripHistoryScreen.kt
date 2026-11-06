@@ -24,6 +24,7 @@ import com.ixam97.carStatsViewer.carApp.utils.monthTripIcon
 import com.ixam97.carStatsViewer.carApp.utils.sinceChargeTripIcon
 import com.ixam97.carStatsViewer.database.tripData.DrivingSession
 import com.ixam97.carStatsViewer.database.tripData.TripType
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -201,6 +202,11 @@ class TripHistoryScreen(carContext: CarContext):
             if (!showMonthlyTrips) { trips.removeIf { it.session_type == TripType.MONTH } }
 
             pastDrivingSessions = trips.subList(0, (trips.size).coerceAtMost(50.coerceAtMost(maxListLength)))
+
+            FirebaseDiagnostics.logRenderedValues("CarAppTripHistoryScreen", mapOf(
+                "active_trips_count" to activeDrivingSessions.size,
+                "past_trips_count" to pastDrivingSessions.size
+            ))
 
             loading = false
             withContext(Dispatchers.Main) {

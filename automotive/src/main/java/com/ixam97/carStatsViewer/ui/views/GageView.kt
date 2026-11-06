@@ -87,7 +87,8 @@ class GageView @JvmOverloads constructor(
 
         if (gageValue < 0) gagePaint = negPaint
 
-        var gageZeroLineYPos = ((viewHeight - borderPaint.strokeWidth)/(maxValue - minValue)) * maxValue
+        val range = maxValue - minValue
+        var gageZeroLineYPos = if (range != 0f) ((viewHeight - borderPaint.strokeWidth) / range) * maxValue else 0f
 
         if (gageValue < minValue) gageValue = minValue
         if (gageValue > maxValue) gageValue = maxValue
@@ -232,6 +233,7 @@ class GageView @JvmOverloads constructor(
             return String.format("%d", gageValueInt)
         }
         if (gageValueFloat != null){
+            if (!gageValueFloat!!.isFinite()) return "-/-"
             //if (gageValueFloat!! > 2 * maxValue)
             //    return ">%.1f".format(Locale.ENGLISH, (2 * maxValue))
             //if (gageValueFloat!! < 2 * minValue && minValue < 0)

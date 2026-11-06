@@ -64,15 +64,20 @@ object StringFormatters {
     }
 
     fun getAvgConsumptionString(usedEnergy: Float, traveledDistance: Float): String {
-        val avgConsumption = appPreferences.distanceUnit.asUnit(usedEnergy / (traveledDistance / 1000))
         val unitString = when {
             appPreferences.consumptionUnit -> "Wh/%s".format(appPreferences.distanceUnit.unit())
             else -> "kWh/100%s".format(appPreferences.distanceUnit.unit())
         }
 
-        if (traveledDistance <= 0) {
+        if (traveledDistance <= 0 || !traveledDistance.isFinite() || !usedEnergy.isFinite()) {
             return "-/- $unitString"
         }
+
+        val avgConsumption = appPreferences.distanceUnit.asUnit(usedEnergy / (traveledDistance / 1000))
+        if (!avgConsumption.isFinite()) {
+            return "-/- $unitString"
+        }
+
         if (!appPreferences.consumptionUnit) {
             return "Ø %.1f %s".format(
                 Locale.ENGLISH,

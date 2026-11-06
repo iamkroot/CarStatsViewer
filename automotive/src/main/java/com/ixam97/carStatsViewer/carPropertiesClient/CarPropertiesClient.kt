@@ -7,6 +7,7 @@ import android.car.hardware.property.PropertyNotAvailableErrorCode
 import android.car.hardware.property.PropertyNotAvailableException
 import android.content.Context
 import android.util.Log
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.InAppLogger
 
 class CarPropertiesClient(
@@ -34,6 +35,12 @@ class CarPropertiesClient(
             // values, though. So this is a workaround to have accurate data.
             if (carPropertyValue.propertyId == CarProperties.PERF_VEHICLE_SPEED) {
                 updateProperty(CarProperties.EV_BATTERY_INSTANTANEOUS_CHARGE_RATE)
+            }
+            if (carPropertyValue.propertyId == CarProperties.EV_BATTERY_LEVEL) {
+                FirebaseDiagnostics.logDiagnostic(
+                    "HAL_BATTERY_EVENT",
+                    "EV_BATTERY_LEVEL onChangeEvent: val=${carPropertyValue.value} (${carPropertyValue.value?.javaClass?.simpleName}), status=${carPropertyValue.status}"
+                )
             }
             carPropertiesData.update(carPropertyValue, doLog = false)
             propertiesProcessor(carPropertyValue.propertyId)
@@ -77,11 +84,39 @@ class CarPropertiesClient(
     fun updateProperty(propertyId: Int) {
         // if (emulatorMode && propertyId == CarProperties.ENV_OUTSIDE_TEMPERATURE && debugTemperatureAttempt < 2) return
         try {
-            carPropertyManager.getProperty<Any>(propertyId, 0)?.let {
-                carPropertiesData.update(it, allowInvalidTimestamps = true, doLog = false)
+            val propVal: CarPropertyValue<*>? = try {
+                when (propertyId) {
+                    CarProperties.PERF_VEHICLE_SPEED,
+                    CarProperties.EV_BATTERY_INSTANTANEOUS_CHARGE_RATE,
+                    CarProperties.EV_BATTERY_LEVEL,
+                    CarProperties.ENV_OUTSIDE_TEMPERATURE,
+                    CarProperties.EV_BATTERY_AVERAGE_TEMPERATURE -> carPropertyManager.getProperty<Float>(propertyId, 0)
+                    CarProperties.GEAR_SELECTION,
+                    CarProperties.IGNITION_STATE,
+                    CarProperties.DISTANCE_DISPLAY_UNITS -> carPropertyManager.getProperty<Int>(propertyId, 0)
+                    CarProperties.EV_CHARGE_PORT_CONNECTED -> carPropertyManager.getProperty<Boolean>(propertyId, 0)
+                    CarProperties.INFO_MAKE,
+                    CarProperties.INFO_MODEL -> carPropertyManager.getProperty<String>(propertyId, 0)
+                    else -> carPropertyManager.getProperty<Any>(propertyId, 0)
+                }
+            } catch (_: Exception) {
+                try {
+                    carPropertyManager.getProperty<Any>(propertyId, 0)
+                } catch (_: Exception) { null }
+            }
+
+            if (propVal != null) {
+                carPropertiesData.update(propVal, allowInvalidTimestamps = true, doLog = false)
+                val safePropName = CarProperties.getNameById(propertyId).lowercase().replace(' ', '_')
+                FirebaseDiagnostics.setCustomKey("prop_$safePropName", propVal.value?.toString() ?: "null")
+            } else {
+                val warnMsg = "[CarPropertiesClient] Failed to get property ${CarProperties.getNameById(propertyId)} ($propertyId) in updateProperty"
+                FirebaseDiagnostics.logDiagnostic("PROP_POLL_FAIL", warnMsg)
             }
         } catch (e: Exception) {
-            InAppLogger.w("[CarPropertiesClient] Failed to update ${CarProperties.getNameById(propertyId)} ($propertyId): ${e.message}")
+            val warnMsg = "[CarPropertiesClient] Failed to update ${CarProperties.getNameById(propertyId)} ($propertyId): ${e.message}"
+            InAppLogger.w(warnMsg)
+            FirebaseDiagnostics.logDiagnostic("PROP_UPDATE_EXCEPTION", warnMsg)
             return
         }
         propertiesProcessor(propertyId)
@@ -112,15 +147,31 @@ class CarPropertiesClient(
             return false
         }
 
-        if (carPropertyManager.registerCallback(
-            carPropertyListener,
-            propertyId,
-            (CarProperties.sensorRateMap[propertyId])?:0f
-        )) {
-            _registeredProperties.add(propertyId)
-            val infoMsg = "[CarPropertiesClient] ${CarProperties.getNameById(propertyId)} ($propertyId) registered successfully"
-            InAppLogger.logWithFirebase(infoMsg, Log.INFO)
-            return true
+        val rate = (CarProperties.sensorRateMap[propertyId]) ?: 0f
+        try {
+            if (carPropertyManager.registerCallback(carPropertyListener, propertyId, rate)) {
+                _registeredProperties.add(propertyId)
+                val infoMsg = "[CarPropertiesClient] ${CarProperties.getNameById(propertyId)} ($propertyId) registered successfully at rate $rate"
+                InAppLogger.logWithFirebase(infoMsg, Log.INFO)
+                return true
+            }
+        } catch (e: Exception) {
+            val warnMsg = "[CarPropertiesClient] Registration with rate $rate threw exception for ${CarProperties.getNameById(propertyId)} ($propertyId): ${e.message}"
+            InAppLogger.w(warnMsg)
+            if (rate != 0f) {
+                try {
+                    InAppLogger.w("[CarPropertiesClient] Attempting fallback registration with rate 0f for ${CarProperties.getNameById(propertyId)}")
+                    if (carPropertyManager.registerCallback(carPropertyListener, propertyId, 0f)) {
+                        _registeredProperties.add(propertyId)
+                        val infoMsg = "[CarPropertiesClient] ${CarProperties.getNameById(propertyId)} ($propertyId) registered successfully with fallback rate 0f"
+                        InAppLogger.logWithFirebase(infoMsg, Log.INFO)
+                        return true
+                    }
+                } catch (fallbackEx: Exception) {
+                    val errMsg = "[CarPropertiesClient] Fallback registration also failed for ${CarProperties.getNameById(propertyId)}: ${fallbackEx.message}"
+                    InAppLogger.e(errMsg)
+                }
+            }
         }
 
         val errorMsg = "[CarPropertiesClient] Failed to register callback for ${CarProperties.getNameById(propertyId)} ($propertyId)"

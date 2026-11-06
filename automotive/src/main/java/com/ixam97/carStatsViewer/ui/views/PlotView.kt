@@ -1077,7 +1077,8 @@ class PlotView @JvmOverloads constructor(
                             for (i in 0 until yLineCount) {
                                 val valueY = maxValue - i * valueShiftY
                                 val cordY = y(valueY, minValue, maxValue, maxY)!!
-                                val label = label((valueY - valueCorrectionY) / configuration.Divider, configuration.LabelFormat)
+                                val divider = if (configuration.Divider != 0f) configuration.Divider else 1f
+                                val label = label((valueY - valueCorrectionY) / divider, configuration.LabelFormat)
 
                                 canvas.drawText(label, labelCordX, cordY + labelShiftY, labelPaint)
                             }
@@ -1106,7 +1107,8 @@ class PlotView @JvmOverloads constructor(
                                 .coerceAtLeast(mYMargin.toFloat())
                                 .coerceAtMost(maxY - mYMargin)
 
-                            val label = label((highlight!! - valueCorrectionY) / configuration.Divider, configuration.LabelFormat, highlightMethod)
+                            val highlightDivider = if (configuration.Divider != 0f) configuration.Divider else 1f
+                            val label = label((highlight!! - valueCorrectionY) / highlightDivider, configuration.LabelFormat, highlightMethod)
                             paint.HighlightLabel.textSize = mTextSize * 1.25f
                             val labelWidth = paint.HighlightLabel.measureText(label)
                             val labelHeight = paint.HighlightLabel.textSize
@@ -1193,6 +1195,7 @@ class PlotView @JvmOverloads constructor(
     }
 
     private fun label(value: Float, plotLineLabelFormat: PlotLineLabelFormat, plotHighlightMethod: PlotHighlightMethod? = null): String {
+        if (!value.isFinite()) return "-/-"
         if (plotHighlightMethod == PlotHighlightMethod.NONE) return ""
 
         // val suffix = when (plotLineLabelFormat) {

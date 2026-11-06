@@ -18,6 +18,7 @@ import com.ixam97.carStatsViewer.R
 import com.ixam97.carStatsViewer.carApp.utils.carIconFromRes
 import com.ixam97.carStatsViewer.database.tripData.DrivingSession
 import com.ixam97.carStatsViewer.map.Mapbox
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -157,46 +158,47 @@ class TripDetailsScreen(carContext: CarContext, private val pTrip: DrivingSessio
                         "Trip Info"
                     )
                 )
+                val distStr = StringFormatters.getTraveledDistanceString(trip.driven_distance.toFloat())
+                val energyStr = StringFormatters.getEnergyString(trip.used_energy.toFloat())
+                val consStr = StringFormatters.getAvgConsumptionString(trip.used_energy.toFloat(), trip.driven_distance.toFloat())
+                val speedStr = StringFormatters.getAvgSpeedString(trip.driven_distance.toFloat(), trip.drive_time)
+                val timeStr = StringFormatters.getElapsedTimeString(trip.drive_time, true)
+
+                FirebaseDiagnostics.logRenderedValues("CarAppTripDetails", mapOf(
+                    "sessionId" to trip.driving_session_id,
+                    "sessionType" to trip.session_type,
+                    "distance" to distStr,
+                    "energy" to energyStr,
+                    "avgConsumption" to consStr,
+                    "avgSpeed" to speedStr,
+                    "time" to timeStr
+                ))
+
                 addSectionedList(
                     SectionedItemList.create(
                         ItemList.Builder().apply {
                             addItem(Row.Builder().apply {
-                                setTitle(StringFormatters.getTraveledDistanceString(trip.driven_distance.toFloat()))
+                                setTitle(distStr)
                                 addText(carContext.getString(R.string.summary_traveled_distance))
                                 setImage(carContext.carIconFromRes(R.drawable.ic_distance_large))
                             }.build())
                             addItem(Row.Builder().apply {
-                                setTitle(StringFormatters.getEnergyString(trip.used_energy.toFloat()))
+                                setTitle(energyStr)
                                 addText(carContext.getString(R.string.summary_used_energy))
                                 setImage(carContext.carIconFromRes(R.drawable.ic_energy_large))
                             }.build())
                             addItem(Row.Builder().apply {
-                                setTitle(
-                                    StringFormatters.getAvgConsumptionString(
-                                        trip.used_energy.toFloat(),
-                                        trip.driven_distance.toFloat()
-                                    )
-                                )
+                                setTitle(consStr)
                                 addText(carContext.getString(R.string.summary_average_consumption))
                                 setImage(carContext.carIconFromRes(R.drawable.ic_avg_consumption))
                             }.build())
                             addItem(Row.Builder().apply {
-                                setTitle(
-                                    StringFormatters.getAvgSpeedString(
-                                        trip.driven_distance.toFloat(),
-                                        trip.drive_time
-                                    )
-                                )
+                                setTitle(speedStr)
                                 addText(carContext.getString(R.string.summary_speed))
                                 setImage(carContext.carIconFromRes(R.drawable.ic_speed_large))
                             }.build())
                             addItem(Row.Builder().apply {
-                                setTitle(
-                                    StringFormatters.getElapsedTimeString(
-                                        trip.drive_time,
-                                        true
-                                    )
-                                )
+                                setTitle(timeStr)
                                 addText(carContext.getString(R.string.summary_travel_time))
                                 setImage(carContext.carIconFromRes(R.drawable.ic_time_large))
                             }.build())

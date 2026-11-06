@@ -12,6 +12,7 @@ import androidx.car.app.model.Template
 import androidx.lifecycle.DefaultLifecycleObserver
 import com.ixam97.carStatsViewer.R
 import com.ixam97.carStatsViewer.database.tripData.ChargingSession
+import com.ixam97.carStatsViewer.utils.FirebaseDiagnostics
 import com.ixam97.carStatsViewer.utils.StringFormatters
 import java.util.Date
 import kotlin.math.roundToInt
@@ -37,6 +38,7 @@ class ChargingSessionListScreen(
 
     private fun chargingSessionListTemplate() = ListTemplate.Builder().apply {
         setHeader(screenHeader())
+        FirebaseDiagnostics.logRenderedValues("ChargingSessionListScreen", mapOf("session_count" to chargingSessions.size))
         setSingleList(ItemList.Builder().apply {
             chargingSessions.forEachIndexed { index, it ->
                 addItem(Row.Builder().apply {
@@ -44,10 +46,13 @@ class ChargingSessionListScreen(
                     setOnClickListener {
                         // screenManager.push(ChargingSessionDetailsScreen(carContext, it, chargingLocations[index]))
                     }
+                    val startSoc = it.chargingPoints?.firstOrNull()?.state_of_charge
+                    val endSoc = it.chargingPoints?.lastOrNull()?.state_of_charge
+                    val socRange = "${((startSoc ?: 0f) * 100).roundToInt()}% → ${((endSoc ?: 0f) * 100).roundToInt()}%"
                     addText("" +
                             "${StringFormatters.getElapsedTimeString(it.chargeTime, true)}, " +
-                            "${((it.chargingPoints?.first()?.state_of_charge?:0f) * 100).roundToInt()}% → ${((it.chargingPoints?.last()?.state_of_charge?:0f) * 100).roundToInt()}%, " +
-                            (chargingLocations[index]?:"no location available")
+                            "$socRange, " +
+                            (chargingLocations.getOrNull(index) ?: "no location available")
                     )
                     setBrowsable(false)
                 }.build())
