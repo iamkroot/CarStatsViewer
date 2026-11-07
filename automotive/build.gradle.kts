@@ -14,6 +14,29 @@ val mapbox: Boolean = providers.gradleProperty("useMapbox")
     .orElse(providers.provider { localProperties.getProperty("useMapbox", "false") })
     .get().toBoolean()
 
+val defaultReleaseKeystorePath = "${System.getProperty("user.home")}/.local/share/android.jks"
+val releaseKeystorePath =
+    localProperties.getProperty("RELEASE_KEYSTORE_PATH")?.trim()
+        ?: System.getenv("RELEASE_KEYSTORE_PATH")?.trim()
+        ?: defaultReleaseKeystorePath
+val releaseKeystoreFile = file(releaseKeystorePath)
+val releaseStorePassword =
+    localProperties.getProperty("RELEASE_STORE_PASSWORD")?.takeIf { it.isNotBlank() }
+        ?: System.getenv("RELEASE_STORE_PASSWORD")?.takeIf { it.isNotBlank() }
+val releaseKeyAlias =
+    localProperties.getProperty("RELEASE_KEY_ALIAS")?.takeIf { it.isNotBlank() }
+        ?: System.getenv("RELEASE_KEY_ALIAS")?.takeIf { it.isNotBlank() }
+        ?: "key0"
+val releaseKeyPassword =
+    localProperties.getProperty("RELEASE_KEY_PASSWORD")?.takeIf { it.isNotBlank() }
+        ?: System.getenv("RELEASE_KEY_PASSWORD")?.takeIf { it.isNotBlank() }
+        ?: releaseStorePassword
+
+val hasReleaseSigningConfig = releaseKeystoreFile.isFile &&
+    releaseStorePassword != null &&
+    releaseKeyAlias != null &&
+    releaseKeyPassword != null
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinSerialization)
@@ -35,8 +58,8 @@ android {
     defaultConfig {
         minSdk = 29
         targetSdk = 37
-        versionCode = 334
-        versionName = "0.29.0.0031"
+        versionCode = 335
+        versionName = "0.29.1.0031"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,10 +95,25 @@ android {
         kotlin.directories.add(if (mapbox) "src/mapbox/java" else "src/mapboxdummy/java" )
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigningConfig) {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseSigningConfig) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
